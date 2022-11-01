@@ -5,6 +5,7 @@ go 1.19
 require github.com/jackc/pgx/v5 v5.0.3
 
 require (
+	github.com/go-playground/form/v4 v4.2.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/puddle/v2 v2.0.0 // indirect

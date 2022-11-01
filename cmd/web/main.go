@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/go-playground/form/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"html/template"
 	"log"
@@ -16,6 +17,7 @@ type application struct {
 	infoLog       *log.Logger
 	snippets      *models.SnippetModel
 	templateCache map[string]*template.Template
+	formDecoder   *form.Decoder
 }
 
 var ctx = context.Background()
@@ -26,6 +28,7 @@ func main() {
 	addr := flag.String("addr", "localhost:4000", "HTTP network address")
 	dsn := flag.String("dsn", "postgres://web:789@localhost:5432/snippetbox", "Postgres data source name")
 	flag.Parse()
+
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
@@ -43,6 +46,8 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
+	formDecoder := form.NewDecoder()
+
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
@@ -50,6 +55,7 @@ func main() {
 			DB: conn,
 		},
 		templateCache: templateCache,
+		formDecoder:   formDecoder,
 	}
 
 	srv := &http.Server{
