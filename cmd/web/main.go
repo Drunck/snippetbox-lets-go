@@ -3,28 +3,30 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/go-playground/form/v4"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
 	"snippetbox.nurkuisa.net/internal/models"
+
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
-	formDecoder   *form.Decoder
+	errorLog       *log.Logger
+	infoLog        *log.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
-var ctx = context.Background()
-
 func main() {
-	var err error
-
 	addr := flag.String("addr", "localhost:4000", "HTTP network address")
 	dsn := flag.String("dsn", "postgres://web:789@localhost:5432/snippetbox", "Postgres data source name")
 	flag.Parse()
@@ -33,7 +35,6 @@ func main() {
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	conn, err := openDB(*dsn)
-
 	if err != nil {
 		errorLog.Fatalf("\nUnable to connection to database: %v\n", err)
 	}
@@ -48,14 +49,19 @@ func main() {
 
 	formDecoder := form.NewDecoder()
 
+	sessionManager := scs.New()
+	sessionManager.Store = pgxstore.New(conn)
+	sessionManager.Lifetime = 12 * time.Hour
+
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
 		snippets: &models.SnippetModel{
 			DB: conn,
 		},
-		templateCache: templateCache,
-		formDecoder:   formDecoder,
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 
 	srv := &http.Server{
@@ -70,12 +76,9 @@ func main() {
 }
 
 func openDB(dsn string) (*pgxpool.Pool, error) {
-	db, err := pgxpool.New(ctx, dsn)
+	db, err := pgxpool.Connect(context.Background(), dsn)
 
 	if err != nil {
-		return nil, err
-	}
-	if err = db.Ping(ctx); err != nil {
 		return nil, err
 	}
 	return db, err

@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"strconv"
+
 	"snippetbox.nurkuisa.net/internal/models"
 	"snippetbox.nurkuisa.net/internal/validator"
-	"strconv"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type snippetCreateForm struct {
@@ -32,14 +34,15 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
-
 	id, err := strconv.Atoi(params.ByName("id"))
+
 	if err != nil || id < 1 {
 		app.notFound(w)
 		return
 	}
 
 	snippet, err := app.snippets.Get(id)
+
 	if err != nil {
 		if errors.Is(err, models.ErrNoRecord) {
 			app.notFound(w)
@@ -91,6 +94,8 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err)
 		return
 	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
